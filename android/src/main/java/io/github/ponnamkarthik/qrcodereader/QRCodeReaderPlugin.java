@@ -93,7 +93,7 @@ public class QRCodeReaderPlugin implements MethodCallHandler, ActivityResultList
                     pendingResult.success(AESUtilities.decrypt(key, data));
                 }
             } catch (Exception ex) {
-                pendingResult.error("Unable to encrypt or decrypt the data", ex);
+                pendingResult.error("Encrypt or decrpt failed","Unable to encrypt or decrypt the data", ex);
             }
         } else {
             throw new IllegalArgumentException("Unknown method " + call.method);
