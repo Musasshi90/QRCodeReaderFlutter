@@ -20,140 +20,157 @@ import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener;
 
 public class QRCodeReaderPlugin implements MethodCallHandler, ActivityResultListener, PluginRegistry.RequestPermissionsResultListener {
-  private static final String CHANNEL = "qrcodereader";
+    private static final String CHANNEL = "qrcodereader";
 
-  private static final int REQUEST_CODE_SCAN_ACTIVITY = 2777;
-  private static final int REQUEST_CODE_CAMERA_PERMISSION = 3777;
+    private static final int REQUEST_CODE_SCAN_ACTIVITY = 2777;
+    private static final int REQUEST_CODE_CAMERA_PERMISSION = 3777;
 
-  private FlutterActivity activity;
-  private Result pendingResult;
-  private Map<String, Object> arguments;
-  private boolean executeAfterPermissionGranted;
+    private FlutterActivity activity;
+    private Result pendingResult;
+    private Map<String, Object> arguments;
+    private boolean executeAfterPermissionGranted;
 
-  public QRCodeReaderPlugin(FlutterActivity activity) {
-    this.activity = activity;
-  }
-
-  public static void registerWith(PluginRegistry.Registrar registrar) {
-    final MethodChannel channel = new MethodChannel(registrar.messenger(), CHANNEL);
-    QRCodeReaderPlugin instance = new QRCodeReaderPlugin((FlutterActivity) registrar.activity());
-    registrar.addActivityResultListener(instance);
-    registrar.addRequestPermissionsResultListener(instance);
-    channel.setMethodCallHandler(instance);
-  }
-
-  @Override
-  public void onMethodCall(MethodCall call, Result result) {
-    if (pendingResult != null) {
-      result.error("ALREADY_ACTIVE", "QR Code reader is already active", null);
-      return;
+    public QRCodeReaderPlugin(FlutterActivity activity) {
+        this.activity = activity;
     }
-    pendingResult = result;
-    if (call.method.equals("readQRCode")) {
-      if (!(call.arguments instanceof Map)) {
-        throw new IllegalArgumentException("Plugin not passing a map as parameter: " + call.arguments);
-      }
-      arguments = (Map<String, Object>) call.arguments;
-      boolean handlePermission = (boolean) arguments.get("handlePermissions");
-      this.executeAfterPermissionGranted = (boolean) arguments.get("executeAfterPermissionGranted");
 
-      if (checkSelfPermission(activity,
-              Manifest.permission.CAMERA)
-              != PackageManager.PERMISSION_GRANTED) {
-        if (shouldShowRequestPermissionRationale(activity,
-                Manifest.permission.CAMERA)) {
-          // TODO: user should be explained why the app needs the permission
-          if (handlePermission) {
-            requestPermissions();
-          } else {
-            setNoPermissionsError();
-          }
-        } else {
-          if (handlePermission) {
-            requestPermissions();
-          } else {
-            setNoPermissionsError();
-          }
+    public static void registerWith(PluginRegistry.Registrar registrar) {
+        final MethodChannel channel = new MethodChannel(registrar.messenger(), CHANNEL);
+        QRCodeReaderPlugin instance = new QRCodeReaderPlugin((FlutterActivity) registrar.activity());
+        registrar.addActivityResultListener(instance);
+        registrar.addRequestPermissionsResultListener(instance);
+        channel.setMethodCallHandler(instance);
+    }
+
+    @Override
+    public void onMethodCall(MethodCall call, Result result) {
+        if (pendingResult != null) {
+            result.error("ALREADY_ACTIVE", "QR Code reader is already active", null);
+            return;
         }
-      } else {
-        startView();
-      }
-    } else {
-      throw new IllegalArgumentException("Unknown method " + call.method);
-    }
-  }
-
-  @TargetApi(Build.VERSION_CODES.M)
-  private void requestPermissions() {
-    activity.requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CODE_CAMERA_PERMISSION);
-  }
-
-  private boolean shouldShowRequestPermissionRationale(Activity activity,
-                                                       String permission) {
-    if (Build.VERSION.SDK_INT >= 23) {
-      return activity.shouldShowRequestPermissionRationale(permission);
-    }
-    return false;
-  }
-
-  private int checkSelfPermission(Context context, String permission) {
-    if (permission == null) {
-      throw new IllegalArgumentException("permission is null");
-    }
-    return context.checkPermission(permission, android.os.Process.myPid(), Process.myUid());
-  }
-
-
-  private void startView() {
-    Intent intent = new Intent(activity, QRScanActivity.class);
-    intent.putExtra(QRScanActivity.EXTRA_FOCUS_INTERVAL, (int) arguments.get("autoFocusIntervalInMs"));
-    intent.putExtra(QRScanActivity.EXTRA_FORCE_FOCUS, (boolean) arguments.get("forceAutoFocus"));
-    intent.putExtra(QRScanActivity.EXTRA_TORCH_ENABLED, (boolean) arguments.get("torchEnabled"));
-    activity.startActivityForResult(intent, REQUEST_CODE_SCAN_ACTIVITY);
-  }
-
-  @Override
-  public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-    if (requestCode == REQUEST_CODE_SCAN_ACTIVITY) {
-      if (resultCode == Activity.RESULT_OK) {
-        String string = data.getStringExtra(QRScanActivity.EXTRA_RESULT);
-        pendingResult.success(string);
-      } else {
-        pendingResult.success(null);
-      }
-      pendingResult = null;
-      arguments = null;
-      return true;
-    }
-    return false;
-  }
-
-
-  @Override
-  public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-    if (requestCode == REQUEST_CODE_CAMERA_PERMISSION) {
-      for (int i = 0; i < permissions.length; i++) {
-        String permission = permissions[i];
-        int grantResult = grantResults[i];
-
-        if (permission.equals(Manifest.permission.CAMERA)) {
-          if (grantResult == PackageManager.PERMISSION_GRANTED) {
-            if (executeAfterPermissionGranted) {
-              startView();
+        pendingResult = result;
+        if (call.method.equals("readQRCode")) {
+            if (!(call.arguments instanceof Map)) {
+                throw new IllegalArgumentException("Plugin not passing a map as parameter: " + call.arguments);
             }
-          } else {
-            setNoPermissionsError();
-          }
-        }
-      }
-    }
-    return false;
-  }
+            arguments = (Map<String, Object>) call.arguments;
+            boolean handlePermission = (boolean) arguments.get("handlePermissions");
+            this.executeAfterPermissionGranted = (boolean) arguments.get("executeAfterPermissionGranted");
 
-  private void setNoPermissionsError() {
-    pendingResult.error("permission", "you don't have the user permission to access the camera", null);
-    pendingResult = null;
-    arguments = null;
-  }
+            if (checkSelfPermission(activity,
+                    Manifest.permission.CAMERA)
+                    != PackageManager.PERMISSION_GRANTED) {
+                if (shouldShowRequestPermissionRationale(activity,
+                        Manifest.permission.CAMERA)) {
+                    // TODO: user should be explained why the app needs the permission
+                    if (handlePermission) {
+                        requestPermissions();
+                    } else {
+                        setNoPermissionsError();
+                    }
+                } else {
+                    if (handlePermission) {
+                        requestPermissions();
+                    } else {
+                        setNoPermissionsError();
+                    }
+                }
+            } else {
+                startView();
+            }
+        } else if (call.method.equals("aes_encryption")) {
+            if (!(call.arguments instanceof Map)) {
+                throw new IllegalArgumentException("Plugin not passing a map as parameter: " + call.arguments);
+            }
+            arguments = (Map<String, Object>) call.arguments;
+            String data = (String) arguments.get("data");
+            String key = (String) arguments.get("key");
+            boolean isEncrypt = (boolean) arguments.get("is_encrypt");
+            try {
+                if (isEncrypt) {
+                    pendingResult.success(AESUtilities.encrypt(key, data));
+                } else {
+                    pendingResult.success(AESUtilities.decrypt(key, data));
+                }
+            } catch (Exception ex) {
+                pendingResult.error("Unable to encrypt or decrypt the data", ex);
+            }
+        } else {
+            throw new IllegalArgumentException("Unknown method " + call.method);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
+    private void requestPermissions() {
+        activity.requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CODE_CAMERA_PERMISSION);
+    }
+
+    private boolean shouldShowRequestPermissionRationale(Activity activity,
+                                                         String permission) {
+        if (Build.VERSION.SDK_INT >= 23) {
+            return activity.shouldShowRequestPermissionRationale(permission);
+        }
+        return false;
+    }
+
+    private int checkSelfPermission(Context context, String permission) {
+        if (permission == null) {
+            throw new IllegalArgumentException("permission is null");
+        }
+        return context.checkPermission(permission, android.os.Process.myPid(), Process.myUid());
+    }
+
+
+    private void startView() {
+        Intent intent = new Intent(activity, QRScanActivity.class);
+        intent.putExtra(QRScanActivity.EXTRA_FOCUS_INTERVAL, (int) arguments.get("autoFocusIntervalInMs"));
+        intent.putExtra(QRScanActivity.EXTRA_FORCE_FOCUS, (boolean) arguments.get("forceAutoFocus"));
+        intent.putExtra(QRScanActivity.EXTRA_TORCH_ENABLED, (boolean) arguments.get("torchEnabled"));
+        activity.startActivityForResult(intent, REQUEST_CODE_SCAN_ACTIVITY);
+    }
+
+    @Override
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_SCAN_ACTIVITY) {
+            if (resultCode == Activity.RESULT_OK) {
+                String string = data.getStringExtra(QRScanActivity.EXTRA_RESULT);
+                pendingResult.success(string);
+            } else {
+                pendingResult.success(null);
+            }
+            pendingResult = null;
+            arguments = null;
+            return true;
+        }
+        return false;
+    }
+
+
+    @Override
+    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == REQUEST_CODE_CAMERA_PERMISSION) {
+            for (int i = 0; i < permissions.length; i++) {
+                String permission = permissions[i];
+                int grantResult = grantResults[i];
+
+                if (permission.equals(Manifest.permission.CAMERA)) {
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        if (executeAfterPermissionGranted) {
+                            startView();
+                        }
+                    } else {
+                        setNoPermissionsError();
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private void setNoPermissionsError() {
+        pendingResult.error("permission", "you don't have the user permission to access the camera", null);
+        pendingResult = null;
+        arguments = null;
+    }
 }
 
